@@ -1,0 +1,106 @@
+Para Deploy de uma aplicação Django
+
+Instalação e atualização de pacotes do SO
+
+sudo apt update
+sudo apt upgrade
+sudo apt install build-essential
+sudo apt python3-dev python3-pip python-pip
+sudo apt install nginx
+sudo pip3/pip install pipenv
+
+Instalação e criação do banco de dados
+
+sudo apt install libpq-dev
+sudo apt install postgresql postgresql-contrib
+sudo -u postgres psql
+# Dentro do SGBD
+# Criação do usuário do banco de dados da aplicação
+create role usuario_do_banco with login password 'senhasuperforte';
+# Criação do banco de dados da aplicação
+create database banco_da_aplicacao owner usuario_do_banco;
+# Para sair do SGBD
+\q
+
+Clone do repositório GIT (Para o primeiro Deploy)
+
+git clone url_do_respositório
+cd diretorio_projeto
+pipenv install # No mesmo nível do arquivo Pipfile
+pipenv run ./manage.py migrate # Lembrar das configs do banco no settings.py
+pipenv run ./manage.py collectstatic # STATIC_ROOT e STATIC_MEDIA
+
+Configuração do NGINX
+
+Criar um arquivo em /etc/nginx/site-avaiable:
+
+sudo nano /etc/nginx/site-avaiable/bugflow # trocar pelo nome do seu projeto
+
+Insira o conteúdo abaixo.
+
+server {
+    listen 80;
+    server_name 10.19.11.26;
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    location /static/ {
+        root /home/aluno/workspace/bugflow;
+    }
+
+    location /media/ {
+        root /home/aluno/workspace/bugflow;
+    }
+
+    location / {
+        include proxy_params;
+        proxy_pass http://unix:/home/aluno/workspace/bugflow/bugflow.sock;
+    }
+}
+
+Para verificar a sintaxe do arquivo do NGINX
+
+sudo nginx -t
+
+Reinicialização do serviço do NGINX
+
+sudo systemctl restart nginx.service
+
+Para verificar o status do serviço do NGINX
+
+sudo systemctl status nginx.service
+
+Configuração do serviço do GUNICORN
+
+Criar o arquivo gunicorn.service em:
+
+sudo nano /etc/systemd/system/gunicorn.service
+
+[Unit]
+Description=Aplicação Bugflow
+After=network.target
+
+[Service]
+User=aluno
+Group=www-data
+WorkingDirectory=/home/aluno/workspace/bugflow
+ExecStart=/home/aluno/venvs/bugflow-w1f9cdNm/bin/gunicorn --access-logfile - --workers 3 --bind unix:$
+
+[Install]
+WantedBy=multi-user.target
+
+Inicialização do serviço do GUNICORN
+
+sudo systemctl start gunicorn.service
+
+Habilitação do serviço do GUNICORN
+
+sudo systemctl enable gunicorn.service
+
+Para verificação do serviço do GUNICORN
+
+sudo systemctl status gunicorn.service
+
+
+Pronto, se tudo estiver sido feito corretamente, certeza que sua aplicação vai está no ar.
+
+
